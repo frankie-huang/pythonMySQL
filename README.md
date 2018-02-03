@@ -165,7 +165,7 @@ M('t1').join(('t2 on t1.id=t2.id', 'LEFT')).select()
 #### 11.fetchSql
 用法与ThinkPHP相同
 ### 3.支持的CURD操作（增删查改）
-失败都返回False，可调用成员函数`showError()`打印SQL错误信息。
+以下操作失败都返回False，可调用成员函数`showError()`打印SQL错误信息。
 #### 1.数据读取
 ##### find()
 读取数据（仅一条）
@@ -189,7 +189,7 @@ data['name'] = 'ThinkPHP'
 data['email'] = 'ThinkPHP@gmail.com'
 User.add(data)
 ```
-插入成功返回插入数据的ID/lastID（如果无ID将返回0）
+插入成功返回插入数据的自增ID（如果无自增ID将返回0）
 ##### addAll()
 批量写入（须传入由字典组成的列表或元组）
 ```
@@ -199,7 +199,8 @@ dataList = [
 ]
 User.addAll(dataList)
 ```
-插入成功返回其中第一条插入数据的ID（如果无ID将返回0）
+插入成功返回其中第一条插入数据的自增ID（如果无自增ID将返回0）
+注：如果插入的数据都指定了自增ID，将返回最后一条数据的自增ID
 #### 3.数据更新
 返回值都是影响的记录数（如果更新前的数据和更新后的没有变化，则返回0）
 ##### save()
