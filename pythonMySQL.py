@@ -683,12 +683,13 @@ class pythonMySQL(object):
             self._clearSubString()
             return buildSql
         try:
-            if len(self.whereValueArray) > 0:
-                self.cur.execute(queryStr, self.whereValueArray)
+            self.queryStr = self._replaceSpecialChar('%s', self.whereValueArray, queryStr)
+            tmp_whereValueArray = self.whereValueArray
+            self._clearSubString()
+            if len(tmp_whereValueArray) > 0:
+                self.cur.execute(queryStr, tmp_whereValueArray)
             else:
                 self.cur.execute(queryStr)
-            self.queryStr = self._replaceSpecialChar('%s', self.whereValueArray, queryStr)
-            self._clearSubString()
             if is_find == True:
                 res = self.cur.fetchone()
             else:
@@ -1087,16 +1088,13 @@ class pythonMySQL(object):
         self.whereValueArray = []
 
     def haveErrorThrowException(self, err):
-        if self.cur.statement == '':
-            self.throw_exception('没有执行SQL语句')
-        else:
-            if self.dbdebug:
-                self.SQLerror = {
-                    'errno' : str(err.errno),
-                    'sqlstate' : str(err.sqlstate),
-                    'msg' : err.msg,
-                    'sql' : str(self.cur.statement)
-                }
+        if self.dbdebug:
+            self.SQLerror = {
+                'errno' : str(err.errno),
+                'sqlstate' : str(err.sqlstate),
+                'msg' : err.msg,
+                'sql' : self.queryStr
+            }
         return False
 
     def showError(self):
