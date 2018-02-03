@@ -4,6 +4,7 @@
 __author__ = 'Frankie'
 
 from config import *
+from mysql.connector import errorcode
 import mysql.connector
 import traceback
 import sys
@@ -24,7 +25,7 @@ class pythonMySQL(object):
     columns = [] # 记录表中字段名
     connected = False # 是否连接成功
     queryStr = '' # 保存最后执行的操作
-    error = '' # 报错错误信息
+    SQLerror = {} # SQL执行报错错误信息
     lastInsertId = 0 # 保存上一步插入操作产生AUTO_INCREMENT
     numRows = 0 # 上一步操作产生受影响的记录的条数
 
@@ -52,6 +53,7 @@ class pythonMySQL(object):
         self.columns = [] # 记录表中字段名
         self.whereStringArray = []
         self.whereValueArray = []
+        self.SQLerror = {}
         # 如果数据库配置已被存在self::$configs中时
         if ConfigID in pythonMySQL.configs:
             if dbConfig != None:
@@ -99,8 +101,14 @@ class pythonMySQL(object):
         try:
             self.con = mysql.connector.connect(**dbConfig)
             self.cur = self.con.cursor(dictionary=True)
-        except BaseException as e:
-            self.throw_exception('数据库连接错误：' + e)
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                msg = "Something is wrong with your user name or password"
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                msg = "Database does not exist"
+            else:
+                msg = err
+            self.throw_exception('数据库连接错误：' + msg)
         # 设置 self.link, self.table_name, self.connected
         if self.cur:
             pythonMySQL.links[ConfigID] = self.con
@@ -483,7 +491,7 @@ class pythonMySQL(object):
             table_name = '`' + self.table_name + '`'
         sqlString = 'INSERT INTO ' + table_name + ' (' + field_str + ') VALUES (' + placeholder + ')'
         res = self.execute(sqlString)
-        if isinstance(res, str):
+        if isinstance(res, str) or res == False:
             return res
         self.lastInsertId = self.cur.lastrowid
         return self.lastInsertId
@@ -527,7 +535,7 @@ class pythonMySQL(object):
             table_name = '`' + self.table_name + '`'
         sqlString = 'INSERT INTO ' + table_name + ' (' + field_str + ') VALUES ' + valueListStr
         res = self.execute(sqlString)
-        if isinstance(res, str):
+        if isinstance(res, str) or res == False:
             return res
         self.lastInsertId = self.cur.lastrowid
         return self.lastInsertId
@@ -687,7 +695,7 @@ class pythonMySQL(object):
                 res = self.cur.fetchall()
             return res
         except mysql.connector.Error as err:
-            self.haveErrorThrowException(err)
+            return self.haveErrorThrowException(err)
 
     def execute(self, execStr):
         if not isinstance(execStr, str):
@@ -706,7 +714,7 @@ class pythonMySQL(object):
             self.numRows = self.cur.rowcount
             return self.numRows
         except mysql.connector.Error as err:
-            self.haveErrorThrowException(err)
+            return self.haveErrorThrowException(err)
 
     # If consistent_snapshot is True, Connector/Python sends WITH CONSISTENT SNAPSHOT with the statement. MySQL ignores this for isolation levels for which that option does not apply.
     # isolation_level: permitted values are 'READ UNCOMMITTED', 'READ COMMITTED', 'REPEATABLE READ', and 'SERIALIZABLE'
@@ -1064,6 +1072,7 @@ class pythonMySQL(object):
             self.throw_exception(e)
 
     def _clearSubString(self):
+        self.SQLerror = {}
         self.fieldString = ''
         self.joinString = ''
         self.whereString = ''
@@ -1081,18 +1090,34 @@ class pythonMySQL(object):
         if self.cur.statement == '':
             self.throw_exception('没有执行SQL语句')
         else:
-            print('Error Code:    ' + str(err.errno))
-            print('SQLSTATE:      ' + str(err.sqlstate))
-            print('Error Message: ' + err.msg)
-            print('Error SQL:     ' + str(self.cur.statement))
-            self.error = err.msg
+            if self.dbdebug:
+                self.SQLerror = {
+                    'errno' : str(err.errno),
+                    'sqlstate' : str(err.sqlstate),
+                    'msg' : err.msg,
+                    'sql' : str(self.cur.statement)
+                }
+        return False
+
+    def showError(self):
+        if self.dbdebug:
+            if 'errno' in self.SQLerror:
+                print('Error Code:    ' + self.SQLerror['errno'])
+                print('SQLSTATE:      ' + self.SQLerror['sqlstate'])
+                print('Error Message: ' + self.SQLerror['msg'])
+                print('Error SQL:     ' + self.SQLerror['sql'])
+            else:
+                print("最近一次SQL操作并没有发生错误")
+        else:
+            print("开启DEBUG模式查看详细错误信息")
 
     def getNumRows(self):
         return self.numRows
 
     def close(self):
-        # self.cur.close()
-        self.con.close()
+        if self.connected:
+            # self.cur.close()
+            self.con.close()
 
     def __del__(self):
         self.close()

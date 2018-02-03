@@ -165,6 +165,7 @@ M('t1').join(('t2 on t1.id=t2.id', 'LEFT')).select()
 #### 11.fetchSql
 用法与ThinkPHP相同
 ### 3.支持的CURD操作（增删查改）
+失败都返回False，可调用成员函数`showError()`打印SQL错误信息。
 #### 1.数据读取
 ##### find()
 读取数据（仅一条）
@@ -177,7 +178,7 @@ data = User.where('status=1 AND name="thinkphp"').find()
 ```
 list = User.where('status=1').order('create_time').limit(10).select()
 ```
-查询成功返回由字典组成的列表，如果无数据返回None
+查询成功返回由字典组成的列表，如果无数据返回空列表
 #### 2.数据插入
 ##### add()
 传入字典
@@ -188,7 +189,7 @@ data['name'] = 'ThinkPHP'
 data['email'] = 'ThinkPHP@gmail.com'
 User.add(data)
 ```
-插入成功返回插入数据的ID/lastID
+插入成功返回插入数据的ID/lastID（如果无ID将返回0）
 ##### addAll()
 批量写入（须传入由字典组成的列表或元组）
 ```
@@ -198,9 +199,9 @@ dataList = [
 ]
 User.addAll(dataList)
 ```
-插入成功返回其中第一条插入数据的ID
+插入成功返回其中第一条插入数据的ID（如果无ID将返回0）
 #### 3.数据更新
-返回值都是影响的记录数
+返回值都是影响的记录数（如果更新前的数据和更新后的没有变化，则返回0）
 ##### save()
 ```
 User = M("User") # 实例化User对象
@@ -422,8 +423,18 @@ link = M("users")
 #### 4.getLastSql() / _sql()
 `getLastSql()`和`_sql()`等效，用于打印最后一条执行的**SQL语句**
 
-其中，当且仅当DEBUG模式开启，以上方法才生效。
-#### 5.(TO DO) html_encode()和html_decode()
+其中，当且仅当DEBUG模式开启，以上方法才会输出详细信息。
+#### 5.showError()
+当SQL语句执行出错时可调用`showError()`打印详细的错误信息；
+
+当然，也可以通过类成员变量`SQLerror`（字典，有如下的key）自行取错误信息：
+>errno：error number<br/>
+sqlstate：SQLSTATE value<br/>
+msg：error message<br/>
+sql：发生错误的SQL语句
+
+其中，当且仅当DEBUG模式开启，以上方法才会输出详细信息。
+#### 6.(TO DO) html_encode()和html_decode()
 PHP的html解码/解码函数
 
 ## TO DO list
