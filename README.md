@@ -429,9 +429,9 @@ link = M("users")
 当SQL语句执行出错时可调用`showError()`打印详细的错误信息；
 
 当然，也可以通过类成员变量`SQLerror`（字典，有如下的key）自行取错误信息：
->errno：error number<br/>
-sqlstate：SQLSTATE value<br/>
-msg：error message<br/>
+>errno：error number，整数，例如1054<br/>
+sqlstate：SQLSTATE value，字符串，例如42S22<br/>
+msg：error message，字符串，例如"Duplicate entry '1' for key 'PRIMARY'"<br/>
 sql：发生错误的SQL语句
 
 其中，当且仅当DEBUG模式开启，以上方法才会输出详细信息。

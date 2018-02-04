@@ -1090,8 +1090,8 @@ class pythonMySQL(object):
     def haveErrorThrowException(self, err):
         if self.dbdebug:
             self.SQLerror = {
-                'errno' : str(err.errno),
-                'sqlstate' : str(err.sqlstate),
+                'errno' : err.errno,
+                'sqlstate' : err.sqlstate,
                 'msg' : err.msg,
                 'sql' : self.queryStr
             }
@@ -1100,7 +1100,7 @@ class pythonMySQL(object):
     def showError(self):
         if self.dbdebug:
             if 'errno' in self.SQLerror:
-                print('Error Code:    ' + self.SQLerror['errno'])
+                print('Error Code:    ' + str(self.SQLerror['errno']))
                 print('SQLSTATE:      ' + self.SQLerror['sqlstate'])
                 print('Error Message: ' + self.SQLerror['msg'])
                 print('Error SQL:     ' + self.SQLerror['sql'])
