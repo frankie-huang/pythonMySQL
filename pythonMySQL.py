@@ -706,12 +706,13 @@ class pythonMySQL(object):
             self._clearSubString()
             return buildSql
         try:
-            if len(self.whereValueArray) > 0:
-                self.cur.execute(execStr, self.whereValueArray)
+            self.queryStr = self._replaceSpecialChar('%s', self.whereValueArray, execStr)
+            tmp_whereValueArray = self.whereValueArray
+            self._clearSubString()
+            if len(tmp_whereValueArray) > 0:
+                self.cur.execute(execStr, tmp_whereValueArray)
             else:
                 self.cur.execute(execStr)
-            self.queryStr = self._replaceSpecialChar('%s', self.whereValueArray, execStr)
-            self._clearSubString()
             self.numRows = self.cur.rowcount
             return self.numRows
         except mysql.connector.Error as err:
