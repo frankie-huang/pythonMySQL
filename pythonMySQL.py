@@ -10,24 +10,25 @@ import traceback
 import sys
 import re
 
+
 class pythonMySQL(object):
-    configs = {} # 设置连接参数，配置信息(字典)
-    links = {} # 保存连接标识符(字典)
-    NumberLink = 0 # 保存数据库连接数量/配置信息数量
- 
-    current = 0 # 标识当前对应的数据库配置，可以是数字或者字符串
-    config = {} # 保存当前模型的数据库配置
-    con = None # 保存连接标识符
-    cur = None # 保存数据库游标
-    dbdebug = False # 是否开启DEBUG模式
-    database = '' # 记录连接的数据库
-    table_name = '' # 记录操作的数据表名
-    columns = [] # 记录表中字段名
-    connected = False # 是否连接成功
-    queryStr = '' # 保存最后执行的操作
-    SQLerror = {} # SQL执行报错错误信息
-    lastInsertId = 0 # 保存上一步插入操作产生AUTO_INCREMENT
-    numRows = 0 # 上一步操作产生受影响的记录的条数
+    configs = {}  # 设置连接参数，配置信息(字典)
+    links = {}  # 保存连接标识符(字典)
+    NumberLink = 0  # 保存数据库连接数量/配置信息数量
+
+    current = 0  # 标识当前对应的数据库配置，可以是数字或者字符串
+    config = {}  # 保存当前模型的数据库配置
+    con = None  # 保存连接标识符
+    cur = None  # 保存数据库游标
+    dbdebug = False  # 是否开启DEBUG模式
+    database = ''  # 记录连接的数据库
+    table_name = ''  # 记录操作的数据表名
+    columns = []  # 记录表中字段名
+    connected = False  # 是否连接成功
+    queryStr = ''  # 保存最后执行的操作
+    SQLerror = {}  # SQL执行报错错误信息
+    lastInsertId = 0  # 保存上一步插入操作产生AUTO_INCREMENT
+    numRows = 0  # 上一步操作产生受影响的记录的条数
 
     tmp_table = ''
     aliasString = ''
@@ -43,21 +44,22 @@ class pythonMySQL(object):
     whereStringArray = []
     whereValueArray = []
 
-    SQL_logic = ['AND', 'OR', 'XOR'] # SQL语句支持的逻辑运算符
+    SQL_logic = ['AND', 'OR', 'XOR']  # SQL语句支持的逻辑运算符
 
     # 对于参数dbConfig，需为dict，包含host、port、user、password、database、charset、autocommit、DB_DEBUG、MYSQL_LOG，至少须包含user、password、database
     def __init__(self, dbtable, ConfigID=0, dbConfig=None):
         if not isinstance(ConfigID, (int, str)):
             self.throw_exception("第二个参数只能是数字或字符串", True)
         # 将类变量中的可变元素初始化
-        self.columns = [] # 记录表中字段名
+        self.columns = []  # 记录表中字段名
         self.whereStringArray = []
         self.whereValueArray = []
         self.SQLerror = {}
         # 如果数据库配置已被存在self::$configs中时
         if ConfigID in pythonMySQL.configs:
             if dbConfig != None:
-                self.throw_exception('数据库配置编号' + ( str(ConfigID) if isinstance(ConfigID, int) else "'" + ConfigID + "'" ) + '已被占用', True)
+                self.throw_exception(
+                    '数据库配置编号' + (str(ConfigID) if isinstance(ConfigID, int) else "'" + ConfigID + "'") + '已被占用', True)
             self.init(ConfigID, dbtable)
             return
         # 以下为数据库配置还未被存在self::$configs中时
@@ -66,7 +68,8 @@ class pythonMySQL(object):
                 self.throw_exception("配置文件未定义CONFIG", True)
             # 检查配置文件中是否有对应的配置信息
             if ConfigID not in CONFIG:
-                self.throw_exception("配置文件中无" + ( str(ConfigID) if isinstance(ConfigID, int) else "'" + ConfigID + "'" ) + "的配置信息", True)
+                self.throw_exception(
+                    "配置文件中无" + (str(ConfigID) if isinstance(ConfigID, int) else "'" + ConfigID + "'") + "的配置信息", True)
             # 使用配置文件中对应的配置
             if ConfigID == 0:
                 dbConfig = CONFIG[0]
@@ -79,7 +82,7 @@ class pythonMySQL(object):
             del dbConfig['DB_DEBUG']
         if 'password' not in dbConfig:
             if 'password' in CONFIG[0]:
-                dbConfig['password'] = CONFIG[0]['password']                
+                dbConfig['password'] = CONFIG[0]['password']
             else:
                 self.throw_exception('数据库未设置密码')
         if 'host' not in dbConfig:
@@ -97,7 +100,7 @@ class pythonMySQL(object):
         self.config = dbConfig
         self.database = dbConfig['database']
         del dbConfig['dbms']
-        
+
         try:
             self.con = mysql.connector.connect(**dbConfig)
             self.cur = self.con.cursor(dictionary=True)
@@ -149,7 +152,7 @@ class pythonMySQL(object):
     def set_columns(self, dbtable):
         self.cur.execute("SHOW COLUMNS FROM `" + dbtable + "`")
         columns = self.cur.fetchall()
-        self.columns = ['',]
+        self.columns = ['', ]
         for column in columns:
             if column['Key'] == 'PRI':
                 self.columns[0] = column['Field']
@@ -158,18 +161,19 @@ class pythonMySQL(object):
     def get_columns(self):
         return self.cur.column_names
 
-    # 字符串查询
+        # 字符串查询
         # where("id = 1 and nick = 'frankie'")
         # where("id = %d and nick = '%s'", 1, 'frankie')
         # where("id = %d and nick = '%s'", (1, 'frankie'))
         # where("id = %d and nick = '%s'", [1, 'frankie'])
-    # 字典查询
+        # 字典查询
         # where({'id':1, 'nick':'frankie'})
         # where({'id&nick':"1"}) # WHERE `id`='1' AND `nick`='1'
         # where({'id&nick':[1, 'frankie']}) = where({'id&nick':[1, 'frankie', '', 's']}) # 其中's'代表single单对应
         # where({'id':[1, 2, 3, 'or', 'm']}) # WHERE `id`=1 OR `id`=2 OR `id`=3 # 其中'm'代表multi多对应
         # where({'id&nick':[1, 'frankie', 'or', 'm']}) # WHERE (`id`=1 OR `id`='frankie') AND (`nick`=1 OR `nick`='frankie') # 其中'm'代表multi多对应
         # 更多详见文档
+
     def where(self, *where):
         param_number = len(where)
         if isinstance(where[0], str):
@@ -213,7 +217,7 @@ class pythonMySQL(object):
             if len(table) == 0:
                 self.throw_exception('table子句参数不能传空字典')
             self.tmp_table = ''
-            for key,val in table.items():
+            for key, val in table.items():
                 if val != '':
                     strpos = key.find('.')
                     if strpos == -1:
@@ -238,10 +242,10 @@ class pythonMySQL(object):
     # field() | field('') | field('*') | field(True) | field('id,username as name, db.pass')
     # field({'id':'', 'username':'name', 'db.pass':''})
     # field('sex,head', True) | field(('sex', 'head'), True)  过滤sex和head字段
-    def field(self, field = '', filter = False):
+    def field(self, field='', filter=False):
         if field == True:
             # 显示调用所有字段
-            self.set_columns( self.table_name if not self.tmp_table else self.tmp_table )
+            self.set_columns(self.table_name if not self.tmp_table else self.tmp_table)
             self.fieldString += ' '
             columns_array = self.columns
             columns_array.pop(0)
@@ -253,11 +257,11 @@ class pythonMySQL(object):
             # 过滤字段
             if not isinstance(field, (str, set, list, tuple)):
                 self.throw_exception("过滤字段时，field子句的参数只支持字符串或set、list、tuple")
-            self.set_columns( self.table_name if self.tmp_table == '' else self.tmp_table )
+            self.set_columns(self.table_name if self.tmp_table == '' else self.tmp_table)
             columns_list = self.columns
             columns_list.pop(0)
             columns_dict = {}
-            for index,item in enumerate(columns_list):
+            for index, item in enumerate(columns_list):
                 columns_dict[str(index)] = item
             explode_array = []
             if isinstance(field, str):
@@ -265,10 +269,10 @@ class pythonMySQL(object):
             else:
                 for single_field in field:
                     explode_array.append(single_field.strip())
-            for index,item in list(columns_dict.items()):
+            for index, item in list(columns_dict.items()):
                 if item in explode_array:
                     columns_dict.pop(index)
-            for index,item in columns_dict.items():
+            for index, item in columns_dict.items():
                 self.fieldString += '`' + item + '`,'
             self.fieldString = ' ' + self.fieldString.rstrip(',')
             return self
@@ -280,7 +284,7 @@ class pythonMySQL(object):
             field_array = list(map(self._addSpecialChar, field_array))
             self.fieldString = ','.join([item for item in field_array])
         elif isinstance(field, dict):
-            for key,val in field.items():
+            for key, val in field.items():
                 if val == '':
                     after_process_key = self._addSpecialChar(key)
                     self.fieldString += after_process_key + ','
@@ -290,7 +294,7 @@ class pythonMySQL(object):
                     self.fieldString += after_process_key + ' AS ' + after_process_val + ','
             self.fieldString = self.fieldString.rstrip(',')
         else:
-            self.throw_exception("field子句的参数只支持字符串或dict")            
+            self.throw_exception("field子句的参数只支持字符串或dict")
         self.fieldString = ' ' + self.fieldString
         return self
 
@@ -299,7 +303,7 @@ class pythonMySQL(object):
             self.orderString = ' ORDER BY ' + order
         elif isinstance(order, dict):
             self.orderString = ' ORDER BY '
-            for key,val in order.items():
+            for key, val in order.items():
                 if val == '':
                     self.orderString += '`' + key.strip() + '`,'
                 else:
@@ -308,9 +312,9 @@ class pythonMySQL(object):
                     self.orderString += '`' + key.strip() + '` ' + val + ','
             self.orderString = self.orderString.rstrip(',')
         else:
-            self.throw_exception("order子句的参数只支持字符串和字典")            
+            self.throw_exception("order子句的参数只支持字符串和字典")
         return self
-    
+
     def limit(self, *limit):
         param_number = len(limit)
         if param_number == 1:
@@ -332,7 +336,7 @@ class pythonMySQL(object):
     def page(self, page_number, amount):
         if not is_numeric(page_number) or not is_numeric(amount):
             self.throw_exception("page方法只支持两个数字参数的写法")
-        start = ( int(page_number) - 1 ) * int(amount)
+        start = (int(page_number) - 1) * int(amount)
         self.limitString = ' LIMIT ' + str(start) + ',' + str(amount)
         return self
 
@@ -356,7 +360,7 @@ class pythonMySQL(object):
                 self.throw_exception("join子句的数组参数必须有两个元素")
             self.joinString += ' ' + join[1] + ' JOIN ' + join[0]
         else:
-            self.throw_exception("join子句的参数只支持字符串或list、tuple")            
+            self.throw_exception("join子句的参数只支持字符串或list、tuple")
         return self
 
     def fetchSql(self, fetchSql=True):
@@ -441,13 +445,13 @@ class pythonMySQL(object):
         if self.tmp_table != '':
             table_name = self.tmp_table + self.aliasString
         else:
-            table_name = '`'+ self.table_name + '`' + self.aliasString
+            table_name = '`' + self.table_name + '`' + self.aliasString
         if primary_key_value != '':
-            self.set_columns( self.table_name if self.tmp_table == '' else self.tmp_table )
+            self.set_columns(self.table_name if self.tmp_table == '' else self.tmp_table)
             self.whereStringArray.append('`' + self.columns[0] + '` = %s')
             self.whereValueArray.append(primary_key_value)
         self.limitString = ' LIMIT 1'
-        self.fieldString = ' *' if self.fieldString=='' else self.fieldString
+        self.fieldString = ' *' if self.fieldString == '' else self.fieldString
         self.parseWhere()
         sqlString += 'SELECT' + self.fieldString + ' FROM ' + table_name + self.joinString + self.whereString + self.groupString + self.havingString + self.orderString + self.limitString
         res = self.query(sqlString, True)
@@ -476,7 +480,7 @@ class pythonMySQL(object):
             if length == 0:
                 placeholder = ''
             else:
-                for key,val in data.items():
+                for key, val in data.items():
                     field_str += '`' + key + '`,'
                     self.whereValueArray.append(val)
                 field_str = field_str.rstrip(',')
@@ -516,7 +520,7 @@ class pythonMySQL(object):
                 valueListStr += ',()'
         else:
             valueStr = '('
-            for key,val in dataList[0].items():
+            for key, val in dataList[0].items():
                 fieldList.append(key)
                 self.whereValueArray.append(val)
                 field_str += key + ','
@@ -546,7 +550,7 @@ class pythonMySQL(object):
             self.throw_exception('setField子句须传入参数')
         self.parseWhere()
         if self.whereString == '':
-            self.set_columns( self.table_name if self.tmp_table == '' else self.tmp_table )
+            self.set_columns(self.table_name if self.tmp_table == '' else self.tmp_table)
             if isinstance(field[0], dict) and self.columns[0] != '' and self.columns[0] in field[0]:
                 if isinstance(field[0][self.columns[0]], (list, tuple)):
                     if field[0][self.columns[0]][0].upper() == 'EXP':
@@ -558,7 +562,7 @@ class pythonMySQL(object):
                     self.whereValueArray.append(field[0][self.columns[0]])
                 del field[0][self.columns[0]]
             elif self.columns[0] == '':
-                self.throw_exception('没有任何更新条件，且指定数据表无主键，不被允许执行更新操作')               
+                self.throw_exception('没有任何更新条件，且指定数据表无主键，不被允许执行更新操作')
             else:
                 self.throw_exception('没有任何更新条件，数据对象本身也不包含主键字段，不被允许执行更新操作')
         setFieldStr = ''
@@ -574,7 +578,7 @@ class pythonMySQL(object):
         elif isinstance(field[0], dict):
             if param_number != 1:
                 self.throw_exception('setField子句只接收一个数组参数')
-            for key,val in field[0].items():
+            for key, val in field[0].items():
                 if isinstance(val, (list, tuple)):
                     if val[0].upper() == 'EXP':
                         if key.find('.') == -1:
@@ -616,7 +620,7 @@ class pythonMySQL(object):
             self.throw_exception('save子句只接收数组参数')
         self.parseWhere()
         if self.whereString == '':
-            self.set_columns( self.table_name if self.tmp_table == '' else self.tmp_table )
+            self.set_columns(self.table_name if self.tmp_table == '' else self.tmp_table)
             if self.columns[0] != '' and self.columns[0] in data:
                 if isinstance(data[self.columns[0]], (list, tuple)):
                     if data[self.columns[0]][0].upper() == 'EXP':
@@ -628,12 +632,12 @@ class pythonMySQL(object):
                     self.whereValueArray.append(data[self.columns[0]])
                 del data[self.columns[0]]
             elif self.columns[0] == '':
-                self.throw_exception('没有任何更新条件，且指定数据表无主键，不被允许执行更新操作')               
+                self.throw_exception('没有任何更新条件，且指定数据表无主键，不被允许执行更新操作')
             else:
                 self.throw_exception('没有任何更新条件，数据对象本身也不包含主键字段，不被允许执行更新操作')
         setFieldStr = ''
         updateValueArray = []
-        for key,val in data.items():
+        for key, val in data.items():
             if isinstance(val, (list, tuple)):
                 # 支持exp表达式进行数据更新
                 if val[0].upper == 'EXP':
@@ -672,6 +676,24 @@ class pythonMySQL(object):
             if self.joinString == '' or self.joinString.upper().find(' ON ') == -1:
                 self.throw_exception('没有传入任何条件，不被允许执行删除操作')
         sqlString = 'DELETE' + table + ' FROM ' + table_name + self.joinString + self.whereString + self.orderString + self.limitString
+        res = self.execute(sqlString)
+        return res
+
+    def deleteById(self, primary_key_value, table=''):
+        sqlString = ''
+        if self.tmp_table != '':
+            table_name = self.tmp_table + self.aliasString
+        else:
+            table_name = '`' + self.table_name + '`' + self.aliasString
+        if table != '':
+            table = ' ' + table
+        if primary_key_value != '':
+            self.set_columns(self.table_name if self.tmp_table == '' else self.tmp_table)
+            self.whereStringArray.append('`' + self.columns[0] + '` = %s')
+            self.whereValueArray.append(primary_key_value)
+        self.parseWhere()
+
+        sqlString = 'DELETE' + table + ' FROM ' + table_name + self.joinString + self.whereString
         res = self.execute(sqlString)
         return res
 
@@ -767,13 +789,13 @@ class pythonMySQL(object):
                 explode_sub_query = key_val.split('=')
                 explode_array[explode_sub_query[0]] = explode_sub_query[1]
             if '_logic' in explode_array:
-                if explode_array['_logic'].upper() in self.SQL_logic:                
+                if explode_array['_logic'].upper() in self.SQL_logic:
                     sub_logic = ' ' + explode_array['_logic'].upper() + ' '
                 else:
                     self.throw_exception('_query中的_logic参数指定的逻辑运算符不被支持："' + explode_array['_logic'] + '"')
                 del explode_array['_logic']
             querySubString = ''
-            for key,val in explode_array.items():
+            for key, val in explode_array.items():
                 start = key.find('.')
                 if start != -1:
                     querySubString += sub_logic + key + " = '" + val + "'"
@@ -782,7 +804,7 @@ class pythonMySQL(object):
             querySubString = querySubString.lstrip(sub_logic)
             whereSubString += logic + '( ' + querySubString + ' )'
             del whereArrayParam['_query']
-        for key,val in whereArrayParam.items():
+        for key, val in whereArrayParam.items():
             whereArraySubString = ''
             have_and = key.find('&')
             have_or = key.find('|')
@@ -799,10 +821,10 @@ class pythonMySQL(object):
                         string_logic = '|'
                         sub_logic = ' OR '
                     explode_array = key.split(string_logic)
-                    signal = 1 # 1代表字段对应数组元素单条件查询，2代表字段对应数组元素多条件查询，3代表表达式查询
+                    signal = 1  # 1代表字段对应数组元素单条件查询，2代表字段对应数组元素多条件查询，3代表表达式查询
                     if len(explode_array) == len(val):
                         signal = 1
-                    else: # 带&或|的字段查询，后两位必须留位指定逻辑符(默认and)和查询方式(默认s)
+                    else:  # 带&或|的字段查询，后两位必须留位指定逻辑符(默认and)和查询方式(默认s)
                         if val[-1] == '' or val[-1] == 's':
                             signal = 1
                         elif val[-1] == 'm':
@@ -1034,7 +1056,7 @@ class pythonMySQL(object):
             # 匹配出as前的字符串
             table_name = re.search('^.*(?=\s{1}as\s{1}`)', value, re.I).group(0)
             if re.match('^\w+$', table_name):
-                value = re.sub('^\w+(?=\s{1}as\s{1}`)', '`' + table_name + '`', value, 0, re.I)             
+                value = re.sub('^\w+(?=\s{1}as\s{1}`)', '`' + table_name + '`', value, 0, re.I)
         elif re.match('^\w+\.\w+$', value):
             pass
         else:
@@ -1058,7 +1080,7 @@ class pythonMySQL(object):
                 # for line in f.readlines()[::-1] 可倒序遍历文件每一行，[::1]表示取所有元素，每1个取一个，[::-1]类同（详见python高级特性：切片）
                 # 使用 for line in f.readlines()[-n:]: 可倒序遍历文件n行
                 # 但是当文件过大时，使用readlines()很耗内存，故采用移动指针读取
-                f.seek(-1, 2) # 将指针定位到末尾前一个字符
+                f.seek(-1, 2)  # 将指针定位到末尾前一个字符
                 content = ''
                 while n > 0:
                     s = f.read(1).decode('ascii')
@@ -1091,10 +1113,10 @@ class pythonMySQL(object):
     def haveErrorThrowException(self, err):
         if self.dbdebug:
             self.SQLerror = {
-                'errno' : err.errno,
-                'sqlstate' : err.sqlstate,
-                'msg' : err.msg,
-                'sql' : self.queryStr
+                'errno': err.errno,
+                'sqlstate': err.sqlstate,
+                'msg': err.msg,
+                'sql': self.queryStr
             }
         return False
 
@@ -1121,21 +1143,23 @@ class pythonMySQL(object):
     def __del__(self):
         self.close()
 
-    def throw_exception(self, errMsg, ignore_debug = False):
+    def throw_exception(self, errMsg, ignore_debug=False):
         if self.dbdebug or ignore_debug:
             print('Error: ' + errMsg + '\n\n' + '错误追踪: \n')
             length = len(traceback.format_stack())
             # 将错误信息追踪逐行打印，length-1是因为最后一行错误追踪无意义
-            for i in range(length-1):
+            for i in range(length - 1):
                 print(traceback.format_stack()[i])
         else:
             errMsg = "系统出错，请联系管理员。"
             print(errMsg)
         sys.exit(0)
 
+
 # 判断一个变量是否已被设置
 def isset(variable):
     return variable in locals() or variable in globals()
+
 
 # 判断是否数字，或者纯数字字符串
 def is_numeric(var):
@@ -1145,13 +1169,16 @@ def is_numeric(var):
     except ValueError:
         return False
 
+
 # 仿PHP的PDO::quote，当前仅对单双引号进行转义，并在字符串左右加上单引号
 def pdo_quote(string):
     return "'" + re.sub(r'(?<=[^\\])([\'\"])', r'\\\1', str(string)) + "'"
+
 
 # M函数
 def M(dbtable, ConfigID=0, dbConfig=None):
     return pythonMySQL(dbtable, ConfigID, dbConfig)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     print('Hello, this Model is coded by ' + __author__)
