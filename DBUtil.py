@@ -1,5 +1,5 @@
 from pythonMySQL import *
-
+import csv
 
 class CRUD_DAO(object):
     def __init__(self, table_name, newConfig=0):
@@ -51,10 +51,29 @@ class UserDAO(CRUD_DAO):
         return res
 
 
+class PoiTypeDAO(CRUD_DAO):
+    def __init__(self, table_name, newConfig=0):
+        super(PoiTypeDAO, self).__init__(table_name, newConfig)
+
+    # def findAllPoitype(self):
+
+
+
 if __name__ == '__main__':
-    userDao = UserDAO('t_user')
-    res = userDao.findByName('jim')
-    print(res)
+    poitypeDao = PoiTypeDAO('poi_type')
+    f = r'D:\work\03\poitype\poitype.csv'
+    inlist = []
+    with open(f, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for e in reader:
+            inlist.append(e)
+        csvfile.close()
+    print(len(inlist))
+    for e in inlist:
+        poitypeDao.addOne(e)
+    # userDao = UserDAO('t_user')
+    # res = userDao.findByName('jim')
+    # print(res)
     # poitype_dao = CRUD_DAO('poi_type')
     # res = poitype_dao.deleteById('02')
     # print(res)
