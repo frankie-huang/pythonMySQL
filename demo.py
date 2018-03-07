@@ -52,44 +52,44 @@ res = test.table('fills,chat.users').field(field).select() # 返回由字典组�
 ## 2. find
 
 # SELECT * FROM `fills` WHERE `id` = '4' LIMIT 1
-res = test.find(4) # 返回字典 或 None
+# res = test.find(4) # 返回字典 或 None
 
 
 ## 3. add
 
 # INSERT INTO `users` (`email`,`username`,`password`,`sex`,`head`) VALUES ('frankie@qq.com','frankie','root','1','head.jpg')
-data = {
-    'email':'frankie@qq.com',
-    'username':'frankie',
-    'password':'root',
-    'sex':"1",
-    'head':'head.jpg'
-}
-res = test.add(data) # 返回lastID
+# data = {
+#     'email':'frankie@qq.com',
+#     'username':'frankie',
+#     'password':'root',
+#     'sex':"1",
+#     'head':'head.jpg'
+# }
+# res = test.add(data) # 返回lastID
 
 
 ## 4. save
 
 # UPDATE users SET `nick` = 'frankie123',`school` = 'scut' WHERE `u_id` = 'abcd1234'
-data = {}
-data['u_id']='abcd1234';
-data['nick']='frankie123';
-data['school']='scut';
-res = test.table('users').save(data) # 返回更新影响数或false
+# data = {}
+# data['u_id']='abcd1234';
+# data['nick']='frankie123';
+# data['school']='scut';
+# res = test.table('users').save(data) # 返回更新影响数或false
 
 
 ## 5. setField
 
 # UPDATE users SET `username` = 'test' WHERE `u_id` = 5
-save_where = {}
-save_where['u_id'] = 5
-res = test.table('users').where(save_where).setField('username','test') # 返回更新影响行数
+# save_where = {}
+# save_where['u_id'] = 5
+# res = test.table('users').where(save_where).setField('username','test') # 返回更新影响行数
 
 
 ## 6. delete
 
 ## DELETE FROM `users` WHERE ( u_id = 6 )
-res = test.where('u_id = 6').delete() # 返回删除的行数
+# res = test.where('u_id = 6').delete() # 返回删除的行数
 
 # DELETE t2 FROM users as t1 INNER JOIN chat.users as t2 on t1.user_id = t2.user_id
 res = test.table('users as t1').join('chat.users as t2 on t1.user_id = t2.user_id').delete('t2')
